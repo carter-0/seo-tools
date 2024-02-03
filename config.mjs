@@ -1,6 +1,11 @@
 const config = {
     // Information
     website: "osuconfigs.com",  // Your website
+    model: "gpt-4",  // The OpenAI model to use for the content generation
+    generateArticle: true,  // Generate an article?
+    generateDescription: true,  // Generate a meta description?
+    generateImage: true,  // Generate a cover image?
+    outputDirectory: "blog",  // The directory to save the generated content. Will be created if it doesn't exist
 
     // Content Style
     tone: 'natural',  // Tone of the content: 'formal', 'natural', 'casual' (allows custom strings as well)

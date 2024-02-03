@@ -5,7 +5,7 @@ import config from './config.mjs';
 import 'dotenv/config';
 
 const openai = new OpenAI({
-    apiKey: process.env["OPENAI_API_KEY"], // This is the default and can be omitted
+    apiKey: process.env["OPENAI_API_KEY"],
 });
 
 const currentDate = new Date();
@@ -17,7 +17,7 @@ const formattedDate = `${year}-${month}-${day}`;
 
 async function main() {
     const questions = [
-        "How to record your screen with OBS.",
+        "What is pSEO.",
     ]
 
     for (const question of questions) {
@@ -29,8 +29,27 @@ async function main() {
 
         let urlKeyword = keyword.replace(/ /g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
 
-        const chatCompletion = await openai.chat.completions.create({
-            messages: [{ role: 'user', content: `
+        if (!fs.existsSync(config.outputDirectory)) {
+            try {
+                fs.mkdirSync(config.outputDirectory);
+            } catch (err) {
+                console.error("Error creating output directory.", err);
+                process.exit(1);
+            }
+        }
+
+        if (!fs.existsSync(`${config.outputDirectory}/${urlKeyword}`)) {
+            try {
+                fs.mkdirSync(`${config.outputDirectory}/${urlKeyword}`);
+            } catch (err) {
+                console.error("Error creating output directory.", err);
+                process.exit(1);
+            }
+        }
+
+        if (config.generateArticle) {
+            const chatCompletion = await openai.chat.completions.create({
+                messages: [{ role: 'user', content: `
 Create an article that will be ${config.recommendedWordCount ?? `2,000`} words on the keyword "${keyword}" with the goal of ranking #1 on Google. Respond with only the article in markdown format (in a code block). Include the keyword in the first paragraph. Try to include the keyword in most headings too. ${config.highKeywordDensity ? `You want to aim for a high keyword density` : null}. Make sure you follow the format I've given you below too e.g. ${config.includeTOC && `toc`}${config.includeTOC && config.includeKeyTakeaways ? `/key takeaways` : config.includeKeyTakeaways && `key takeaways`}. ${config.includeLSIKeywords && `Generate a long list of LSI and NLP keywords related to my keyword and add them naturally. Also include any other words related to the keyword.`}
 
 ${config.includeFAQs && 
@@ -81,62 +100,60 @@ Never hallucinate links: Insert links naturally throughout the content, inside t
 Ensure it's clear and simplified, easy enough for anyone to understand, including those without prior knowledge on the topic.
 Make sure the article is in a code block and in markdown format.
 ` }],
-            model: 'gpt-4',
-            max_tokens: 4096
-        });
+                model: config.model,
+                max_tokens: 4096
+            });
 
-        console.log(chatCompletion.choices[0].message.content);
+            console.log(chatCompletion.choices[0].message.content);
 
-        let formattedContent = chatCompletion.choices[0].message.content;
+            let formattedContent = chatCompletion.choices[0].message.content;
 
-        if (formattedContent.includes('```markdown')) {
-            formattedContent = formattedContent.replace('```markdown', '```')
-        }
+            if (formattedContent.includes('```markdown')) {
+                formattedContent = formattedContent.replace('```markdown', '```')
+            }
 
-        // get content inside code block
-        formattedContent = formattedContent.substring(formattedContent.indexOf('```') + 3);
-        formattedContent = formattedContent.substring(0, formattedContent.indexOf('```'));
+            // get content inside code block
+            formattedContent = formattedContent.substring(formattedContent.indexOf('```') + 3);
+            formattedContent = formattedContent.substring(0, formattedContent.indexOf('```'));
 
-        // formattedContent.replaceAll('Osu', 'osu');
+            // formattedContent.replaceAll('Osu', 'osu');
 
-        // replace [toc] with toc
-        formattedContent = formattedContent.replace(/\[toc\]/g, '<TOCInline toc={props.toc} exclude="Key Takeaways" />');
+            // replace [toc] with toc
+            // formattedContent = formattedContent.replace(/\[toc\]/g, '<TOCInline toc={props.toc} exclude="Key Takeaways" />');
 
-        const nameCompletion = await openai.chat.completions.create({
-            messages: [{ role: 'user', content: `Respond with an appropriate, SEO optimised description for a blog post with the title ${keyword}. Your entire response should be the description.` }],
-            model: 'gpt-4-turbo-preview',
-            max_tokens: 196
-        });
+            const nameCompletion = await openai.chat.completions.create({
+                messages: [{ role: 'user', content: `Respond with an appropriate, SEO optimised description for a blog post with the title ${keyword}. Your entire response should be the description.` }],
+                model: config.model,
+                max_tokens: 196
+            });
 
-        formattedContent = `
----
+            formattedContent = 
+`---
 title: '${keyword}'
 date: '${formattedDate}'
-draft: false
-summary: ${nameCompletion.choices[0].message.content}
+description: ${nameCompletion.choices[0].message.content}
 ---
 
-${formattedContent}
-`.trim()
+${formattedContent}`.trim()
 
-        // const image = await openai.images.generate({
-        //     model: "dall-e-3",
-        //     prompt: `A cover image for a blog post titled "${keyword}"`,
-        //     n: 1,
-        //     size: "1024x1024",
-        //     quality: 'hd'
-        // });
-        //
-        // const image_url = image.data[0].url;
-        //
-        // console.log(image_url)
-        // // save image to public/static/images/${urlKeyword}.png:
-        //
-        // const response = await fetch(image_url)
-        // const buffer = Buffer.from(await response.arrayBuffer())
-        // await writeFile(`public/static/images/${urlKeyword}.png`, buffer)
+            await writeFile(`${config.outputDirectory}/${urlKeyword}/${urlKeyword}.md`, formattedContent)
+        }
 
-        fs.writeFileSync(`data/blog/${urlKeyword}.mdx`, formattedContent);
+        if (config.generateImage) {
+            const image = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: `A cover image for a blog post titled "${keyword}"`,
+                n: 1,
+                size: "1024x1024",
+                quality: 'hd'
+            });
+            
+            const image_url = image.data[0].url;
+            
+            const response = await fetch(image_url)
+            const buffer = Buffer.from(await response.arrayBuffer())
+            await writeFile(`${config.outputDirectory}/${urlKeyword}/${urlKeyword}.png`, buffer)
+        }
     }
 }
 

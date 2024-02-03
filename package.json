@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "fs": "^0.0.1-security",
+    "openai": "^4.26.0"
+  }
+}

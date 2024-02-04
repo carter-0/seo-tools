@@ -16,12 +16,19 @@ const day = ("0" + currentDate.getDate()).slice(-2); // Pad with 0 if needed
 const formattedDate = `${year}-${month}-${day}`;
 
 async function main() {
-    const questions = [
-        "What is pSEO.",
-    ]
+    if (!fs.existsSync(config.keywordSource)) {
+        console.error("[ERROR]: Keyword source file does not exist.");
+        process.exit(1);
+    }
+
+    const questions = fs.readFileSync(config.keywordSource, 'utf-8').split('\n');
+
+    if (questions.length === 0) {
+        console.error("[ERROR]: No questions found in the keyword source file.");
+        process.exit(1);
+    }
 
     for (const question of questions) {
-        console.log(question)
         let keyword = question
 
         keyword = keyword.trim();
@@ -33,7 +40,7 @@ async function main() {
             try {
                 fs.mkdirSync(config.outputDirectory);
             } catch (err) {
-                console.error("Error creating output directory.", err);
+                console.error("[ERROR]: Error creating output directory.", err);
                 process.exit(1);
             }
         }
@@ -42,51 +49,47 @@ async function main() {
             try {
                 fs.mkdirSync(`${config.outputDirectory}/${urlKeyword}`);
             } catch (err) {
-                console.error("Error creating output directory.", err);
+                console.error("[ERROR]: Error creating output directory.", err);
                 process.exit(1);
             }
         }
 
         if (config.generateArticle) {
+            console.log(`[Article #${questions.indexOf(question)}] Generating article for keyword: ${question}`)
+
             const chatCompletion = await openai.chat.completions.create({
                 messages: [{ role: 'user', content: `
-Create an article that will be ${config.recommendedWordCount ?? `2,000`} words on the keyword "${keyword}" with the goal of ranking #1 on Google. Respond with only the article in markdown format (in a code block). Include the keyword in the first paragraph. Try to include the keyword in most headings too. ${config.highKeywordDensity ? `You want to aim for a high keyword density` : null}. Make sure you follow the format I've given you below too e.g. ${config.includeTOC && `toc`}${config.includeTOC && config.includeKeyTakeaways ? `/key takeaways` : config.includeKeyTakeaways && `key takeaways`}. ${config.includeLSIKeywords && `Generate a long list of LSI and NLP keywords related to my keyword and add them naturally. Also include any other words related to the keyword.`}
-
-${config.includeFAQs && 
-`Include FAQs section too, with relevant questions.`}
-
+Create an article that will be ${config.recommendedWordCount ?? `2,000`} words on the keyword "${keyword}" with the goal of ranking #1 on Google. Respond with only the article in markdown format (in a code block). Include the keyword in the first paragraph. Try to include the keyword in most headings too. ${config.highKeywordDensity ? `You want to aim for a high keyword density. ` : ""}Make sure you follow the format I've given you below too e.g. ${config.includeTOC ? `toc` : ""}${config.includeTOC && config.includeKeyTakeaways ? `/key takeaways` : config.includeKeyTakeaways ? `key takeaways. ` : ""}${config.includeLSIKeywords ? `Generate a long list of LSI and NLP keywords related to my keyword and add them naturally. Also include any other words related to the keyword.` : ""}
+${config.includeFAQs ?
+`Include FAQs section too, with relevant questions.` : ""}
 Format with markdown in a code block.
-
-${config.italicImportantSections &&
-`Italic the most important keywords`}
-
+${config.italicImportantSections ?
+`Italic the most important keywords` : ""}
 Use some bullet points but also plenty of paragraphs
-
 ${config.includeExternalLinks ? (
-`Link out within the 2nd and 3rd paragraph using ${config.generateExternalLinks ? `external links you create yourself` : `a choice of the best fitting external links from the following`}, not at the end, to the resources. ${config.generateExternalLinks ? null : `Here is the list of external links: ${config.externalLinks.toString()}`}.`
-) : null}
-
+`Link out within the 2nd and 3rd paragraph using ${config.generateExternalLinks ? `external links you create yourself` : `a choice of the best fitting external links from the following`}, not at the end, to the resources. ${config.generateExternalLinks ? "" : `Here is the list of external links: ${config.externalLinks.toString()}`}.`
+) : ""}
 ${config.includeLSIKeywords ?
-`Include LSI and NLP keywords inside the content naturally.` : null}
+`Include LSI and NLP keywords inside the content naturally.` : ""}
 Write in markdown format in a code block so it can be easily copied.
 Create a ${config.recommendedWordCount ?? `2,000`} word article to be published on my website ${config.website}.
 ${config.includeKeyTakeaways ?
 `Write a 2-3 sentence keyword optimized introduction to hook people in
-Don’t call it introduction.` : null}
+Don’t call it introduction.` : ""}
 ${config.includeTOC ?
 `Include ${config.TOC} at the top, after introduction. ${config.TOC} is paragraph text.
-${config.includeKeyTakeaways ? `Create a h2 called key takeaways after the ${config.TOC}. Add bullet points to the key takeaways.` : null}` : includeKeyTakeaways ? `Create a h2 called key takeaways towards the beginning of the article. Add bullet points to the key takeaways.` : null}
+${config.includeKeyTakeaways ? `Create a h2 called key takeaways after the ${config.TOC}. Add bullet points to the key takeaways.` : ""}` : config.includeKeyTakeaways ? `Create a h2 called key takeaways towards the beginning of the article. Add bullet points to the key takeaways.` : ""}
 Include relevant headings. All headings must be h2 or h3.
 Insert a line break between each sentence. No exceptions.
 Writing style = ${config.writingStyle}. No fluff. ${config.tone}. Write at ${config.readingLevel}
-${config.includeFAQs &&
-`Include an FAQs section too: h3s for the question, paragraph text for the answers`}
-${config.includeInternalLinks ? `Add links to the user's provided internal links: ${config.internalLinks.toString()}.` : null}
+${config.includeFAQs ?
+`Include an FAQs section too: h3s for the question, paragraph text for the answers` : ""}
+${config.includeInternalLinks ? `Add links to the user's provided internal links: ${config.internalLinks.toString()}.` : ""}
 Every section must be separated by h2 headings.
-${config.boldImportantSections &&
-`Bolden most important keywords in the article`}
-${config.includeTables && 
-`Include tables throughout the content with relevant facts`}
+${config.boldImportantSections ?
+`Bolden most important keywords in the article` : ""}
+${config.includeTables ?
+`Include tables throughout the content with relevant facts` : ""}
 Every sentence on a new line with line breaks.
 No fluff or filler.
 No paragraphs longer than ${config.recommendedParagraphLines ?? `1-2`} lines.
@@ -99,12 +102,10 @@ Your entire response must be valid Markdown.
 Never hallucinate links: Insert links naturally throughout the content, inside the paragraph text (not the headings).
 Ensure it's clear and simplified, easy enough for anyone to understand, including those without prior knowledge on the topic.
 Make sure the article is in a code block and in markdown format.
-` }],
+`.trim() }],
                 model: config.model,
                 max_tokens: 4096
             });
-
-            console.log(chatCompletion.choices[0].message.content);
 
             let formattedContent = chatCompletion.choices[0].message.content;
 
@@ -116,30 +117,30 @@ Make sure the article is in a code block and in markdown format.
             formattedContent = formattedContent.substring(formattedContent.indexOf('```') + 3);
             formattedContent = formattedContent.substring(0, formattedContent.indexOf('```'));
 
-            // formattedContent.replaceAll('Osu', 'osu');
+            let descriptionCompletion = "";
 
-            // replace [toc] with toc
-            // formattedContent = formattedContent.replace(/\[toc\]/g, '<TOCInline toc={props.toc} exclude="Key Takeaways" />');
-
-            const nameCompletion = await openai.chat.completions.create({
-                messages: [{ role: 'user', content: `Respond with an appropriate, SEO optimised description for a blog post with the title ${keyword}. Your entire response should be the description.` }],
-                model: config.model,
-                max_tokens: 196
-            });
+            if (config.generateDescription) {
+                descriptionCompletion = await openai.chat.completions.create({
+                    messages: [{ role: 'user', content: `Respond with an appropriate, SEO optimised description for a blog post with the title ${keyword}. Your entire response should be the description.` }],
+                    model: config.model,
+                    max_tokens: 196
+                });
+            }
 
             formattedContent = 
 `---
 title: '${keyword}'
 date: '${formattedDate}'
-description: ${nameCompletion.choices[0].message.content}
+${config.generateDescription ? `description: ${descriptionCompletion.choices[0].message.content}` : ""}
 ---
-
 ${formattedContent}`.trim()
 
             await writeFile(`${config.outputDirectory}/${urlKeyword}/${urlKeyword}.md`, formattedContent)
+            console.log(`[Article #${questions.indexOf(question)}] Article content generated for keyword ${question}`)
         }
 
         if (config.generateImage) {
+            console.log(`[Article #${questions.indexOf(question)}] Generating image for keyword: ${question}`)
             const image = await openai.images.generate({
                 model: "dall-e-3",
                 prompt: `A cover image for a blog post titled "${keyword}"`,
@@ -153,6 +154,7 @@ ${formattedContent}`.trim()
             const response = await fetch(image_url)
             const buffer = Buffer.from(await response.arrayBuffer())
             await writeFile(`${config.outputDirectory}/${urlKeyword}/${urlKeyword}.png`, buffer)
+            console.log(`[Article #${questions.indexOf(question)}] Image generated for keyword ${question}`)
         }
     }
 }

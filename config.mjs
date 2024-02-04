@@ -1,25 +1,25 @@
 const config = {
     // Information
-    website: "osuconfigs.com",  // Your website
-    model: "gpt-3.5-turbo-0125",  // The OpenAI model to use for the content generation. gpt-4 or gpt-4-turbo is recommended.
+    website: "trackify.am",  // Your website
+    model: "gpt-4-turbo-preview",  // The OpenAI model to use for the content generation. gpt-4 or gpt-4-turbo is recommended.
     generateArticle: true,  // Generate an article?
-    generateDescription: false,  // Generate a meta description?
-    generateImage: false,  // Generate a cover image?
+    generateDescription: true,  // Generate a meta description?
+    generateImage: true,  // Generate a cover image?
     outputDirectory: "blog",  // The directory to save the generated content. Will be created if it doesn't exist
     keywordSource: "keywords.txt",  // The file to read keywords from. Each keyword should be on a new line.
 
     // Content Style
     tone: 'natural',  // Tone of the content: 'formal', 'natural', 'casual' (allows custom strings as well)
-    writingStyle: 'creative',  // Writing style: 'professional', 'creative', 'entertaining' (allows custom strings as well)
+    writingStyle: 'entertaining',  // Writing style: 'professional', 'creative', 'entertaining' (allows custom strings as well)
     readingLevel: '8th grade reading level, it should be easy to read using simple language. Explain everything to me like I’m an idiot.',  // Reading level: '8th grade', etc.
-    highKeywordDensity: false,  // Should the content have a high keyword density?
-    includeLSIKeywords: false,  // Include LSI keywords in the content?
+    highKeywordDensity: true,  // Should the content have a high keyword density?
+    includeLSIKeywords: true,  // Include LSI keywords in the content?
 
     // Content Format
-    recommendedParagraphLines: 3,  // Recommended number of lines per paragraph
+    recommendedParagraphLines: 2,  // Recommended number of lines per paragraph
     recommendedWordCount: 2000,  // 2,000 words recommended, anymore and the model may not be able to handle it
     italicImportantSections: false,
-    boldImportantSections: false,
+    boldImportantSections: true,
 
     // Internal Links
     includeInternalLinks: false,  // Include internal links in the content?
